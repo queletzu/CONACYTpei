@@ -1,0 +1,158 @@
+library(readxl)
+library(tidyverse)
+library(dplyr)
+#LOS DATOS DE CONACYT se pueden bajar de esta liga:
+#https://www.conacyt.gob.mx/index.php/fondos-y-apoyos/programa-de-estimulos-a-la-innovacion
+#se descarga el xls
+
+PEI<- read_excel(".../PEI_Beneficiarios_2009-2017.xlsx" ,
+                 col_types = c("text", "text", "text", "text", "text", "text",
+                               "text", "text", "text","numeric", "numeric","numeric",
+                               "text", "text", "text", "text", "text", "text",
+                               "text", "text", "text", "text", "text", "text"),
+                 skip=2)
+head(PEI)
+str(PEI)
+
+PEI$'TAMAÑO DE EMPRESA'<-as.factor(PEI$'TAMAÑO DE EMPRESA')
+PEI$'MODALIDAD'<-as.factor(PEI$'MODALIDAD')
+PEI$'AREA INDUSTRIAL'<-as.factor(PEI$'AREA INDUSTRIAL')
+PEI$'ENTIDAD DEL PROYECTO'<-as.factor(PEI$'ENTIDAD DEL PROYECTO')
+PEI$`CONVOCATORIA`<-as.factor(PEI$`CONVOCATORIA`)
+PEI$`VINCULADO   _INDIVIDUAL`<-as.factor(PEI$`VINCULADO   _INDIVIDUAL`)
+levels(PEI$CONVOCATORIA)
+
+library(ggplot2)
+
+a09<- PEI %>%
+  filter(CONVOCATORIA == "2009") %>%
+  select(`MONTO DE APOYO`, `AREA INDUSTRIAL`) %>%
+  group_by(`AREA INDUSTRIAL`) %>%
+  summarise_all(sum)
+
+a10<- PEI %>%
+  filter(CONVOCATORIA == "2010") %>%
+  select(`MONTO DE APOYO`, `AREA INDUSTRIAL`) %>%
+  group_by(`AREA INDUSTRIAL`) %>%
+  summarise_all(sum)
+
+a11<- PEI %>%
+  filter(CONVOCATORIA == "2011") %>%
+  select(`MONTO DE APOYO`, `AREA INDUSTRIAL`) %>%
+  group_by(`AREA INDUSTRIAL`) %>%
+  summarise_all(sum)
+
+a12<- PEI %>%
+  filter(CONVOCATORIA == "2012") %>%
+  select(`MONTO DE APOYO`, `AREA INDUSTRIAL`) %>%
+  group_by(`AREA INDUSTRIAL`) %>%
+  summarise_all(sum)
+
+a13<- PEI %>%
+  filter(CONVOCATORIA == "2013") %>%
+  select(`MONTO DE APOYO`, `AREA INDUSTRIAL`) %>%
+  group_by(`AREA INDUSTRIAL`) %>%
+  summarise_all(sum)
+
+a14<- PEI %>%
+  filter(CONVOCATORIA == "2014") %>%
+  select(`MONTO DE APOYO`, `AREA INDUSTRIAL`) %>%
+  group_by(`AREA INDUSTRIAL`) %>%
+  summarise_all(sum)
+
+a15<- PEI %>%
+  filter(CONVOCATORIA == "2015") %>%
+  select(`MONTO DE APOYO`, `AREA INDUSTRIAL`) %>%
+  group_by(`AREA INDUSTRIAL`) %>%
+  summarise_all(sum)
+
+a16<- PEI %>%
+  filter(CONVOCATORIA == "2016") %>%
+  select(`MONTO DE APOYO`, `AREA INDUSTRIAL`) %>%
+  group_by(`AREA INDUSTRIAL`) %>%
+  summarise_all(sum)
+
+a17<- PEI %>%
+  filter(CONVOCATORIA == "2017") %>%
+  select(`MONTO DE APOYO`, `AREA INDUSTRIAL`) %>%
+  group_by(`AREA INDUSTRIAL`) %>%
+  summarise_all(sum)
+
+w<-full_join(a09, a10,  by="AREA INDUSTRIAL")
+x<-full_join(w, a11,  by="AREA INDUSTRIAL")
+y<-full_join(x, a12,  by="AREA INDUSTRIAL")
+z<-full_join(y, a13,  by="AREA INDUSTRIAL")
+a<-full_join(z, a14,  by="AREA INDUSTRIAL")
+b<-full_join(a, a15,  by="AREA INDUSTRIAL")
+c<-full_join(b, a16,  by="AREA INDUSTRIAL")
+d<-full_join(c, a17,  by="AREA INDUSTRIAL")
+colnames(d)<-c("AreaIndustrial", "2009", "2010", "2011",
+                "2012", "2013", "2014", "2015", "2016", "2017")
+
+formato<-gather(d, year, value, "2009":"2017")
+formato$year<-as.numeric(formato$year)
+
+
+# PEI_formatted <- formato %>%
+#   group_by(year) %>%
+#   mutate(rank = rank(-value),
+#          Value_rel = value/value[rank==1],
+#          Value_lbl = paste0(" ",round(value/1e6))) %>%
+#   group_by(AreaIndustrial) %>%
+#   filter(rank <=10) %>%
+#   ungroup()
+
+
+PEI_formatted <- formato %>%
+  group_by(year) %>%
+  mutate(rank = rank(-value),
+         Value_rel = value/value[rank==1],
+         Value_lbl = paste0(" ",round(value/1e6))) %>%
+  group_by(AreaIndustrial) %>%
+  filter(rank <=15) %>%
+  ungroup()
+
+#Todo este codigo lo tomé de esta página 
+#https://towardsdatascience.com/create-animated-bar-charts-using-r-31d09e5841da
+#y adapté los datos del PEI de CONACYT 
+#Ya formateados
+
+library(gganimate)
+staticplot =   ggplot(PEI_formatted, aes(rank, group = AreaIndustrial, 
+                                       fill = as.factor(AreaIndustrial), color = as.factor(AreaIndustrial))) +
+  geom_tile(aes(y = value/2,
+                height = value,
+                width = 0.9), alpha = 0.8, color = NA) +
+  geom_text(aes(y = 0, label = paste(AreaIndustrial, " ")), vjust = 0.2, hjust = 1)+
+  geom_text(aes(y=value, label = Value_lbl, hjust=0)) +
+  coord_flip(clip = "off", expand = FALSE) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_reverse() +
+  guides(color = FALSE, fill = FALSE) +
+  theme(axis.line=element_blank(),
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        legend.position="none",
+        panel.background=element_blank(),
+        panel.border=element_blank(),
+        panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.grid.major.x = element_line( size=.1, color="grey" ),
+        panel.grid.minor.x = element_line( size=.1, color="grey" ),
+        plot.title=element_text(size=25, hjust=0.5, face="bold", colour="grey", vjust=-1),
+        plot.subtitle=element_text(size=18, hjust=0.5, face="italic", color="grey"),
+        plot.caption =element_text(size=8, hjust=0.5, face="italic", color="grey"),
+        plot.background=element_blank(),
+        plot.margin = margin(2,2, 2, 4, "cm"))
+library(gganimate)
+anim = staticplot + transition_states(year, transition_length = 4, state_length = 1, wrap=TRUE) +
+  view_follow(fixed_x = TRUE)  +
+  labs(title = 'PEI/AREA per Year : {closest_state}',  
+       subtitle  =  "Top 20 AREAS",
+       caption  = "PEI | Data Source: CONACyT")
+
+animate(anim, 100, fps = 10,  width = 1200, height = 1000, 
+        renderer = gifski_renderer("PEImil.gif"))
