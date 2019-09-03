@@ -1,11 +1,7 @@
 library(readxl)
 library(tidyverse)
 library(dplyr)
-#LOS DATOS DE CONACYT se pueden bajar de esta liga:
-#https://www.conacyt.gob.mx/index.php/fondos-y-apoyos/programa-de-estimulos-a-la-innovacion
-#se descarga el xls
-
-PEI<- read_excel(".../PEI_Beneficiarios_2009-2017.xlsx" ,
+PEI<- read_excel("/Users/queletzu/Desktop/CYT/PEI_Beneficiarios_2009-2017.xlsx" ,
                  col_types = c("text", "text", "text", "text", "text", "text",
                                "text", "text", "text","numeric", "numeric","numeric",
                                "text", "text", "text", "text", "text", "text",
@@ -20,7 +16,7 @@ PEI$'AREA INDUSTRIAL'<-as.factor(PEI$'AREA INDUSTRIAL')
 PEI$'ENTIDAD DEL PROYECTO'<-as.factor(PEI$'ENTIDAD DEL PROYECTO')
 PEI$`CONVOCATORIA`<-as.factor(PEI$`CONVOCATORIA`)
 PEI$`VINCULADO   _INDIVIDUAL`<-as.factor(PEI$`VINCULADO   _INDIVIDUAL`)
-levels(PEI$CONVOCATORIA)
+#levels(PEI$CONVOCATORIA)
 
 library(ggplot2)
 
@@ -93,46 +89,39 @@ formato<-gather(d, year, value, "2009":"2017")
 formato$year<-as.numeric(formato$year)
 
 
-# PEI_formatted <- formato %>%
-#   group_by(year) %>%
-#   mutate(rank = rank(-value),
-#          Value_rel = value/value[rank==1],
-#          Value_lbl = paste0(" ",round(value/1e6))) %>%
-#   group_by(AreaIndustrial) %>%
-#   filter(rank <=10) %>%
-#   ungroup()
-
-
 PEI_formatted <- formato %>%
   group_by(year) %>%
   mutate(rank = rank(-value),
          Value_rel = value/value[rank==1],
+         PesosMxnMillones = value/2,
          Value_lbl = paste0(" ",round(value/1e6))) %>%
   group_by(AreaIndustrial) %>%
-  filter(rank <=15) %>%
-  ungroup()
-
-#Todo este codigo lo tomé de esta página 
-#https://towardsdatascience.com/create-animated-bar-charts-using-r-31d09e5841da
-#y adapté los datos del PEI de CONACYT 
-#Ya formateados
-
+  filter(rank <=10) %>%
+   ungroup()
+   
 library(gganimate)
-staticplot =   ggplot(PEI_formatted, aes(rank, group = AreaIndustrial, 
-                                       fill = as.factor(AreaIndustrial), color = as.factor(AreaIndustrial))) +
-  geom_tile(aes(y = value/2,
+
+staticplot =   ggplot(PEI_formatted, 
+                      aes(rank, group = AreaIndustrial, 
+                                       fill = as.factor(AreaIndustrial), 
+                          color = as.factor(AreaIndustrial))) +
+  geom_tile(aes(y = PesosMxnMillones,
                 height = value,
                 width = 0.9), alpha = 0.8, color = NA) +
-  geom_text(aes(y = 0, label = paste(AreaIndustrial, " ")), vjust = 0.2, hjust = 1)+
-  geom_text(aes(y=value, label = Value_lbl, hjust=0)) +
+  geom_text(aes(y = 0, label = paste(AreaIndustrial, " ")), 
+            vjust = 0.2, hjust = 1,
+            size=10, angle=45)+ #este es el tamaño de las letras de las barras en el eje y
+  geom_text(aes(y=value, label = Value_lbl, hjust=0), size=10) +#este es el tamaño de los numeros de cada barra
   coord_flip(clip = "off", expand = FALSE) +
   scale_y_continuous(labels = scales::comma) +
-  scale_x_reverse() +
+  scale_x_reverse(position = "bottom") +
   guides(color = FALSE, fill = FALSE) +
   theme(axis.line=element_blank(),
+        #axis.text.x=element_text(size=15,  face="bold", colour="grey", angle=30), #este es el tamaño de los labels del eje de las x
         axis.text.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks=element_blank(),
+        #axis.title.x=element_text(size=30,  face="bold", colour="grey", hjust = 0.8, vjust=-1),
         axis.title.x=element_blank(),
         axis.title.y=element_blank(),
         legend.position="none",
@@ -142,17 +131,21 @@ staticplot =   ggplot(PEI_formatted, aes(rank, group = AreaIndustrial,
         panel.grid.minor=element_blank(),
         panel.grid.major.x = element_line( size=.1, color="grey" ),
         panel.grid.minor.x = element_line( size=.1, color="grey" ),
-        plot.title=element_text(size=25, hjust=0.5, face="bold", colour="grey", vjust=-1),
-        plot.subtitle=element_text(size=18, hjust=0.5, face="italic", color="grey"),
-        plot.caption =element_text(size=8, hjust=0.5, face="italic", color="grey"),
+        plot.title=element_text(size=30, hjust=0.5, face="bold", colour="gray30", vjust=-1),
+        plot.subtitle=element_text(size=22, hjust=0.5, face="italic", color="gray40"),
+        plot.caption =element_text(size=18, hjust=0.5, face="italic", color="grey"),
         plot.background=element_blank(),
-        plot.margin = margin(2,2, 2, 4, "cm"))
-library(gganimate)
-anim = staticplot + transition_states(year, transition_length = 4, state_length = 1, wrap=TRUE) +
+        plot.margin = margin(1, 2, 1, 6, "cm")  )
+         
+staticplot
+#library(gganimate)
+anim = staticplot + 
+  transition_states(year, transition_length = 4, 
+                                      state_length = 4, wrap=TRUE) +
   view_follow(fixed_x = TRUE)  +
-  labs(title = 'PEI/AREA per Year : {closest_state}',  
-       subtitle  =  "Top 20 AREAS",
-       caption  = "PEI | Data Source: CONACyT")
+  labs(title = 'Millones Pesos asignados por Area Industrial por \n año : {closest_state}',  
+       #subtitle  =  " Mxn",
+       caption  = " Top 10 Areas PEI \n Fuente: CONACyT \n https://www.conacyt.gob.mx/index.php/fondos-y-apoyos/programa-de-estimulos-a-la-innovacion")
 
 animate(anim, 100, fps = 10,  width = 1200, height = 1000, 
-        renderer = gifski_renderer("PEImil.gif"))
+        renderer = gifski_renderer("PEIb.gif"))
